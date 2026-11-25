@@ -1,8 +1,8 @@
 # Ćwiczenia ServiceDesk
 
-Pracuj w katalogu `servicedesk/`. Uruchom aplikację zgodnie z głównym `README.md` przed rozpoczęciem ćwiczeń. Czasy na slajdach obejmują wykonanie i krótką weryfikację; pierwszy build obrazów oraz instalacja narzędzi powinny być gotowe wcześniej.
+Pracuj w katalogu `servicedesk/`, z wyjątkiem drugiej próby 3B prowadzonej poza repozytorium. Uruchom aplikację zgodnie z głównym `README.md` przed rozpoczęciem ćwiczeń. Czasy na slajdach obejmują wykonanie i krótką weryfikację; pierwszy build obrazów oraz instalacja narzędzi powinny być gotowe wcześniej.
 
-Pliki w `workshop/tasks/` są kopiami slajdów z `../../tasks/`; przy zmianie zadania aktualizuj obie wersje. Zadania główne 1A–15A tworzą ścieżkę szkolenia. Zadania oznaczone B są dodatkowymi, niezależnymi wariantami. Każde ćwiczenie wykonuj na osobnej gałęzi lub zapisz wynik w osobnym pliku `workshop/notes/<id>.md`; nie przenoś niedokończonych zmian do kolejnego ćwiczenia. Przed zadaniami 10B i 15A prowadzący powinien udostępnić gotową zmianę z 10A, jeśli uczestnik nie ukończył jej samodzielnie.
+Zadania w `workshop/tasks/` odpowiadają ćwiczeniom z prezentacji. Zadania główne 1A–15A tworzą ścieżkę szkolenia, a zadania B ją rozszerzają. Zadania 3B, 4A i 4B korzystają z wcześniejszych notatek; 10B oraz zadania 13–15 korzystają z gotowej zmiany 10A. Dla tych zadań rozpocznij pracę od ukończonej gałęzi 10A albo wersji przekazanej przez prowadzącego. Pozostałe ćwiczenia z kodem wykonuj na osobnych gałęziach; notatki zapisuj w `workshop/notes/<id>.md`. Nie przenoś niedokończonych zmian do kolejnego ćwiczenia. Ścieżki w zadaniach są podane względem katalogu `servicedesk/`.
 
 | Moduł | Zadanie główne | Dodatkowe |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ Pliki w `workshop/tasks/` są kopiami slajdów z `../../tasks/`; przy zmianie za
 | 9 | [9A: porównanie narzędzi](tasks/9a.md) | [9B: instrukcje projektu](tasks/9b.md) |
 | 10 | [10A: czyszczenie wyszukiwania](tasks/10a.md) | [10B: test E2E](tasks/10b.md) |
 | 11 | [11A: pomiar dashboardu](tasks/11a.md) | — |
-| 12 | [12A: historia eskalacji SLA](tasks/12a.md) | — |
+| 12 | [12A: powiadomienie o zagrożonym SLA](tasks/12a.md) | — |
 | 13 | [13A: review zmiany](tasks/13a.md) | [13B: ocena uwag](tasks/13b.md) |
 | 14 | [14A: opis MR](tasks/14a.md) | [14B: diagnoza CI](tasks/14b.md) |
 | 15 | [15A: mały pełny obieg](tasks/15a.md) | — |
