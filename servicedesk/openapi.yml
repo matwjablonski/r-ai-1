@@ -1,0 +1,718 @@
+openapi: 3.0.3
+info:
+  title: ServiceDesk API
+  version: 1.0.0
+  description: |
+    API lokalnego projektu warsztatowego ServiceDesk. Sesja jest przechowywana
+    w cookie HttpOnly. Przed każdym żądaniem POST lub PATCH pobierz token przez
+    GET /api/auth/csrf, zachowaj ustawione cookie i prześlij token w nagłówku
+    X-CSRF-TOKEN. Dotyczy to również logowania i wylogowania.
+servers:
+  - url: http://localhost:8080
+    description: API uruchomione bezpośrednio przez Docker Compose
+  - url: http://localhost:3000
+    description: Ta sama ścieżka /api przez proxy Nuxt
+tags:
+  - name: System
+  - name: Authentication
+  - name: Tickets
+  - name: Reference data
+  - name: Reporting
+paths:
+  /api/health:
+    get:
+      tags: [System]
+      summary: Sprawdź połączenie API z bazą
+      operationId: getHealth
+      security: []
+      responses:
+        '200':
+          description: Baza jest dostępna.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: Baza jest niedostępna.
+  /api/auth/csrf:
+    get:
+      tags: [Authentication]
+      summary: Pobierz token CSRF
+      description: |
+        Odpowiedź ustawia cookie CSRF. Wartość token prześlij jako X-CSRF-TOKEN
+        w kolejnym żądaniu zmieniającym stan, z tym samym zestawem cookies.
+      operationId: getCsrfToken
+      security: []
+      responses:
+        '200':
+          description: Token dla bieżącej sesji przeglądarki.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CsrfToken'
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      summary: Zaloguj użytkownika
+      operationId: login
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: requester1@example.test
+              password: Training!2026
+      responses:
+        '200':
+          description: Zalogowany użytkownik; odpowiedź ustawia cookie sesji.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/InvalidCsrf'
+        '401':
+          description: Nieprawidłowy adres e-mail lub hasło.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /api/auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Wyloguj użytkownika
+      operationId: logout
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      responses:
+        '204':
+          description: Sesja zakończona.
+        '400':
+          $ref: '#/components/responses/InvalidCsrf'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/auth/me:
+    get:
+      tags: [Authentication]
+      summary: Pobierz bieżącego użytkownika
+      operationId: getCurrentUser
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Dane z bieżącej sesji.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/categories:
+    get:
+      tags: [Reference data]
+      summary: Pobierz kategorie zgłoszeń
+      operationId: listCategories
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Kategorie posortowane według nazwy.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Category'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /api/technicians:
+    get:
+      tags: [Reference data]
+      summary: Pobierz techników
+      description: Dostępne tylko koordynatorowi.
+      operationId: listTechnicians
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Technicy posortowani według nazwy.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Technician'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tickets:
+    get:
+      tags: [Tickets]
+      summary: Pobierz widoczne zgłoszenia
+      description: |
+        Zgłaszający widzi własne zgłoszenia, technik przypisane do siebie,
+        a koordynator wszystkie. Nieznana wartość sort powoduje sortowanie
+        domyślne; page i pageSize są ograniczane przez serwer.
+      operationId: listTickets
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: search
+          in: query
+          description: Podciąg tytułu lub opisu, bez rozróżniania wielkości liter.
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+        - name: priority
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketPriority'
+        - name: sort
+          in: query
+          description: Obsługiwane wartości to newest, oldest, due i priority.
+          schema:
+            type: string
+            default: newest
+        - name: page
+          in: query
+          description: Numer strony; serwer ogranicza wartość do zakresu 1–100000.
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          description: Liczba pozycji; serwer ogranicza wartość do zakresu 1–100.
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Strona zgłoszeń widocznych dla bieżącego użytkownika.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPage'
+        '400':
+          description: Nieprawidłowa wartość parametru zapytania.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Tickets]
+      summary: Utwórz zgłoszenie
+      description: Dostępne tylko zgłaszającemu; priorytet początkowy to Medium.
+      operationId: createTicket
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketRequest'
+            example:
+              title: Laptop nie uruchamia się
+              description: Po włączeniu ekran pozostaje czarny.
+              categoryId: 1
+      responses:
+        '201':
+          description: Utworzone zgłoszenie.
+          headers:
+            Location:
+              description: Ścieżka do utworzonego zgłoszenia.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedTicket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/tickets/{id}:
+    parameters:
+      - $ref: '#/components/parameters/TicketId'
+    get:
+      tags: [Tickets]
+      summary: Pobierz szczegóły zgłoszenia
+      description: Zgłoszenie spoza widocznego zbioru zwraca 404.
+      operationId: getTicket
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Zgłoszenie z komentarzami i historią.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tickets/{id}/comments:
+    parameters:
+      - $ref: '#/components/parameters/TicketId'
+    post:
+      tags: [Tickets]
+      summary: Dodaj komentarz
+      description: Użytkownik musi widzieć zgłoszenie.
+      operationId: addComment
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCommentRequest'
+            example:
+              body: Problem występuje także po ponownym uruchomieniu.
+      responses:
+        '204':
+          description: Komentarz i wpis historii zapisane.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/tickets/{id}/assignment:
+    parameters:
+      - $ref: '#/components/parameters/TicketId'
+    patch:
+      tags: [Tickets]
+      summary: Przypisz technika
+      description: Dostępne tylko koordynatorowi. Zamkniętego zgłoszenia nie można przypisać.
+      operationId: assignTicket
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignRequest'
+      responses:
+        '204':
+          description: Technik przypisany.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/tickets/{id}/priority:
+    parameters:
+      - $ref: '#/components/parameters/TicketId'
+    patch:
+      tags: [Tickets]
+      summary: Zmień priorytet
+      description: |
+        Dostępne tylko koordynatorowi. Termin SLA jest przeliczany od
+        pierwotnego czasu utworzenia zgłoszenia.
+      operationId: changeTicketPriority
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriorityRequest'
+            example:
+              priority: High
+      responses:
+        '204':
+          description: Priorytet i termin SLA zaktualizowane.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/tickets/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/TicketId'
+    patch:
+      tags: [Tickets]
+      summary: Zmień status
+      description: |
+        Zgłaszający nie może zmieniać statusu. Niedozwolona zmiana stanu
+        zwraca 409; szczegółowe przejścia opisuje docs/domain/rules.md.
+      operationId: changeTicketStatus
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusRequest'
+            example:
+              status: InProgress
+      responses:
+        '204':
+          description: Status zaktualizowany.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+  /api/dashboard:
+    get:
+      tags: [Reporting]
+      summary: Pobierz liczniki dashboardu
+      description: Liczniki są ograniczone do zgłoszeń widocznych dla bieżącego użytkownika.
+      operationId: getDashboard
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Liczniki statusów i SLA.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dashboard'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: servicedesk.session
+      description: Cookie ustawiane przez POST /api/auth/login.
+  parameters:
+    TicketId:
+      name: id
+      in: path
+      required: true
+      description: Identyfikator zgłoszenia.
+      schema:
+        type: integer
+        format: int64
+    CsrfHeader:
+      name: X-CSRF-TOKEN
+      in: header
+      required: true
+      description: Token z GET /api/auth/csrf, przesłany z powiązanym cookie.
+      schema:
+        type: string
+  responses:
+    InvalidCsrf:
+      description: Brak lub nieprawidłowy token CSRF.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    BadRequest:
+      description: Nieprawidłowe dane lub token CSRF.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Brak ważnej sesji.
+    Forbidden:
+      description: Operacja niedozwolona dla bieżącej roli.
+    NotFound:
+      description: Zgłoszenie nie istnieje albo nie jest widoczne dla użytkownika.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: Niedozwolona zmiana stanu zgłoszenia.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [healthy]
+    CsrfToken:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    UserRole:
+      type: string
+      enum: [Requester, Technician, Coordinator]
+    TicketStatus:
+      type: string
+      enum: [Open, InProgress, Resolved, Closed]
+    TicketPriority:
+      type: string
+      enum: [Low, Medium, High, Critical]
+    User:
+      type: object
+      required: [id, email, displayName, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+    CurrentUser:
+      type: object
+      required: [id, displayName, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+    Category:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    Technician:
+      type: object
+      required: [id, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+    TicketItem:
+      type: object
+      required: [id, title, category, priority, status, requester, technician, createdAt, dueAt, atRisk, overdue]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        category:
+          type: string
+        priority:
+          $ref: '#/components/schemas/TicketPriority'
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+        requester:
+          type: string
+        technician:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        dueAt:
+          type: string
+          format: date-time
+        atRisk:
+          type: boolean
+        overdue:
+          type: boolean
+    TicketPage:
+      type: object
+      required: [items, total, pageNumber, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TicketItem'
+        total:
+          type: integer
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+    CommentItem:
+      type: object
+      required: [id, author, body, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        author:
+          type: string
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    HistoryItem:
+      type: object
+      required: [id, actor, action, detail, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        actor:
+          type: string
+        action:
+          type: string
+        detail:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    TicketDetail:
+      type: object
+      required: [ticket, description, updatedAt, resolvedAt, comments, history]
+      properties:
+        ticket:
+          $ref: '#/components/schemas/TicketItem'
+        description:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentItem'
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryItem'
+    Dashboard:
+      type: object
+      required: [open, inProgress, atRisk, overdue, resolvedToday]
+      properties:
+        open:
+          type: integer
+        inProgress:
+          type: integer
+        atRisk:
+          type: integer
+        overdue:
+          type: integer
+        resolvedToday:
+          type: integer
+    CreateTicketRequest:
+      type: object
+      required: [title, description, categoryId]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 180
+          description: Po przycięciu musi zawierać co najmniej jeden znak.
+        description:
+          type: string
+          minLength: 1
+          maxLength: 6000
+          description: Po przycięciu musi zawierać co najmniej jeden znak.
+        categoryId:
+          type: integer
+          description: Identyfikator z GET /api/categories; wartość w przykładzie zależy od stanu bazy.
+    CreatedTicket:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: integer
+          format: int64
+    AddCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: Limit dotyczy tekstu po przycięciu.
+    AssignRequest:
+      type: object
+      required: [technicianId]
+      properties:
+        technicianId:
+          type: string
+          format: uuid
+          description: Identyfikator z GET /api/technicians; wartości w seedzie są generowane przy inicjalizacji.
+    PriorityRequest:
+      type: object
+      required: [priority]
+      properties:
+        priority:
+          $ref: '#/components/schemas/TicketPriority'
+    StatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/TicketStatus'
+    Problem:
+      type: object
+      description: Odpowiedź problem details zwracana przez ASP.NET Core.
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string

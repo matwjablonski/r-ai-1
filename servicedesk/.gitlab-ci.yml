@@ -1,0 +1,87 @@
+stages:
+  - check
+  - integration
+  - e2e
+  - build
+
+variables:
+  SERVICEDESK_DIR: "."
+
+frontend-check:
+  stage: check
+  image: node:24
+  script:
+    - cd "$SERVICEDESK_DIR/frontend"
+    - npm ci
+    - npm run lint
+    - npm run typecheck
+    - npm test
+  artifacts:
+    when: always
+    paths:
+      - $SERVICEDESK_DIR/frontend/test-results/
+
+backend-check:
+  stage: check
+  image: mcr.microsoft.com/dotnet/sdk:10.0
+  script:
+    - cd "$SERVICEDESK_DIR/backend"
+    - dotnet restore ServiceDesk.slnx
+    - dotnet build ServiceDesk.slnx --no-restore
+    - dotnet test ServiceDesk.slnx --no-restore --filter FullyQualifiedName~RulesTests --logger 'trx;LogFileName=rules.trx' --results-directory test-results
+  artifacts:
+    when: always
+    paths:
+      - $SERVICEDESK_DIR/backend/test-results/
+
+backend-integration:
+  stage: integration
+  image: mcr.microsoft.com/dotnet/sdk:10.0
+  services:
+    - name: postgres:17-alpine
+      alias: postgres
+  variables:
+    POSTGRES_DB: servicedesk_test
+    POSTGRES_USER: servicedesk
+    POSTGRES_PASSWORD: test-only-password
+    ConnectionStrings__ServiceDesk: Host=postgres;Port=5432;Database=servicedesk_test;Username=servicedesk;Password=test-only-password
+  script:
+    - cd "$SERVICEDESK_DIR/backend"
+    - dotnet restore ServiceDesk.slnx
+    - dotnet test ServiceDesk.slnx --no-restore --filter FullyQualifiedName~ApiIntegrationTests --logger 'trx;LogFileName=integration.trx' --results-directory test-results
+  artifacts:
+    when: always
+    paths:
+      - $SERVICEDESK_DIR/backend/test-results/
+
+frontend-e2e:
+  stage: e2e
+  image: docker:29-cli
+  services:
+    - name: docker:29-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - cd "$SERVICEDESK_DIR"
+    - status=0; docker compose -f compose.test.yaml up --build --abort-on-container-exit --exit-code-from frontend-e2e frontend-e2e || status=$?; mkdir -p test-results/e2e; docker cp servicedesk-test-frontend-e2e-1:/app/test-results/. test-results/e2e/ || true; docker compose -f compose.test.yaml down; exit "$status"
+  artifacts:
+    when: always
+    paths:
+      - $SERVICEDESK_DIR/test-results/e2e/
+    reports:
+      junit: $SERVICEDESK_DIR/test-results/e2e/e2e.xml
+
+production-build:
+  stage: build
+  image: docker:29-cli
+  services:
+    - name: docker:29-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+  script:
+    - cd "$SERVICEDESK_DIR"
+    - docker compose build migrate frontend

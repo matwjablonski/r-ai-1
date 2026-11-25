@@ -1,0 +1,69 @@
+name: servicedesk
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: servicedesk
+      POSTGRES_USER: servicedesk
+      POSTGRES_PASSWORD: ${SERVICEDESK_DB_PASSWORD:-training-local-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U servicedesk -d servicedesk"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  migrate:
+    image: servicedesk-api:local
+    build:
+      context: ./backend
+      target: production
+    command: ["--migrate"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Training
+      ConnectionStrings__ServiceDesk: Host=db;Port=5432;Database=servicedesk;Username=servicedesk;Password=${SERVICEDESK_DB_PASSWORD:-training-local-password}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    image: servicedesk-api:local
+    environment:
+      ASPNETCORE_ENVIRONMENT: Training
+      ConnectionStrings__ServiceDesk: Host=db;Port=5432;Database=servicedesk;Username=servicedesk;Password=${SERVICEDESK_DB_PASSWORD:-training-local-password}
+    ports:
+      - "127.0.0.1:${SERVICEDESK_API_PORT:-8080}:8080"
+    volumes:
+      - protection_keys:/root/.aspnet/DataProtection-Keys
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+    ports:
+      - "127.0.0.1:${SERVICEDESK_WEB_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/login"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  postgres_data:
+  protection_keys:

@@ -1,0 +1,93 @@
+name: servicedesk-test
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: servicedesk_test
+      POSTGRES_USER: servicedesk
+      POSTGRES_PASSWORD: test-only-password
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U servicedesk -d servicedesk_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+    ports:
+      - "127.0.0.1:${SERVICEDESK_TEST_DB_PORT:-15432}:5432"
+
+  backend-tests:
+    build:
+      context: ./backend
+      target: test
+    environment:
+      ASPNETCORE_ENVIRONMENT: Training
+      ConnectionStrings__ServiceDesk: Host=db;Port=5432;Database=servicedesk_test;Username=servicedesk;Password=test-only-password
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./test-results/backend:/results
+
+  migrate:
+    image: servicedesk-api-test:local
+    build:
+      context: ./backend
+      target: production
+    command: ["--migrate"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Training
+      ConnectionStrings__ServiceDesk: Host=db;Port=5432;Database=servicedesk_test;Username=servicedesk;Password=test-only-password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    image: servicedesk-api-test:local
+    environment:
+      ASPNETCORE_ENVIRONMENT: Training
+      ConnectionStrings__ServiceDesk: Host=db;Port=5432;Database=servicedesk_test;Username=servicedesk;Password=test-only-password
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/api/health"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+    ports:
+      - "127.0.0.1:${SERVICEDESK_TEST_WEB_PORT:-13001}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3000/login"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+
+  frontend-e2e:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.e2e
+    environment:
+      E2E_BASE_URL: http://frontend:3000
+    depends_on:
+      frontend:
+        condition: service_healthy
+    volumes:
+      - ./test-results/e2e:/app/test-results
+
+  frontend-checks:
+    build:
+      context: ./frontend
+      target: dev
+    command: ["sh", "-c", "npm run lint && npm run typecheck && npm test && npm run build"]
+    volumes:
+      - ./test-results/frontend:/app/test-results
