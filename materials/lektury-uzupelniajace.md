@@ -6,6 +6,7 @@ Materiały pogłębiają tematy ćwiczone w ServiceDesk: poznawanie projektu, pr
 
 - [Best practices for Claude Code — Anthropic](https://code.claude.com/docs/en/best-practices) — jak podawać agentowi kontekst, dzielić pracę i sprawdzać wynik.
 - [How Claude remembers your project — Anthropic](https://code.claude.com/docs/en/memory) — zakres i utrzymanie instrukcji projektu w `CLAUDE.md`.
+- [Using custom instructions to unlock the power of Copilot code review — GitHub Docs](https://docs.github.com/en/copilot/tutorials/customize-code-review) — jak pisać instrukcje repozytorium dla Copilota i sprawdzać ich wpływ na przegląd kodu.
 - [Markdown. Skromny język, który napisał Internet — Mateusz Jabłoński](https://mateuszjablonski.com/blog/markdown-skromny-jezyk-ktory-napisal-internet) — polski tekst o formacie używanym w dokumentacji i instrukcjach dla agentów.
 
 ## Praca z agentem i zmiana kodu
@@ -38,6 +39,7 @@ Materiały pogłębiają tematy ćwiczone w ServiceDesk: poznawanie projektu, pr
 - [Playwright MCP — Microsoft](https://playwright.dev/docs/getting-started-mcp) — automatyzacja przeglądarki z użyciem MCP.
 - [Playwright best practices — Microsoft](https://playwright.dev/docs/best-practices) — testowanie zachowań widocznych dla użytkownika i izolacja testów.
 - [MCP Security — OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html) — ryzyka związane z zewnętrznymi narzędziami i ograniczaniem ich uprawnień.
+- [LLM01:2026 Prompt Injection — OWASP Gen AI Security Project](https://genai.owasp.org/llm2026/llm012026-prompt-injection/) — jak niezaufana treść w dokumentach, logach lub wynikach narzędzi może wpływać na agenta i jak ograniczać skutki takiego ataku.
 
 ## Kontrola jakości zmian
 
