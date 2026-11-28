@@ -6,6 +6,8 @@ To repozytorium `r-ai-1` zawiera:
 - [`materials/presentation.pdf`](./materials/presentation.pdf) — prezentacja PDF;
 - [`materials/workbook.pdf`](./materials/workbook.pdf) — zadania, pytania po ćwiczeniach i miejsce na notatki;
 - [`materials/tasks/`](./materials/tasks/) — treść zadań w plikach Markdown;
+- [`materials/lektury-uzupelniajace.md`](./materials/lektury-uzupelniajace.md) — artykuły i dokumentacja do dalszej nauki;
+- [`materials/przydatne-narzedzia.md`](./materials/przydatne-narzedzia.md) — narzędzia do wypróbowania po warsztacie.
 
 Zacznij od [workbooka](./materials/workbook.pdf). Zawiera zadania, pytania po ćwiczeniach i miejsce na notatki.
 
