@@ -8,6 +8,7 @@ To repozytorium `r-ai-1` zawiera:
 - [`materials/tasks/`](./materials/tasks/) — treść zadań w plikach Markdown;
 - [`materials/lektury-uzupelniajace.md`](./materials/lektury-uzupelniajace.md) — artykuły i dokumentacja do dalszej nauki;
 - [`materials/przydatne-narzedzia.md`](./materials/przydatne-narzedzia.md) — narzędzia do wypróbowania po warsztacie.
+- [`materials/CLAUDE.md`](./materials/CLAUDE.md) — wzorcowe instrukcje projektu, które harness może umieścić w katalogu projektu po dostosowaniu.
 
 Zacznij od [workbooka](./materials/workbook.pdf). Zawiera zadania, pytania po ćwiczeniach i miejsce na notatki.
 
